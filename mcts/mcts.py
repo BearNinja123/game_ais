@@ -5,7 +5,6 @@ import pickle as pkl
 import numpy.random as npr
 import numpy as np
 import random, time, pdb
-#pdb.set_trace()
 
 def logg(*args):
     print(*args)
@@ -33,6 +32,8 @@ class Node:
     def __init__(self, parentMoveVal=None, state=None, parent=None, children=set(), parentIsAI=False):
         self.wins = 0
         self.plays = 0
+        self.ucb = 0
+        self.ucbUpdated = False
         self.parentMoveVal = parentMoveVal
         self.state = state
         self.children = children
@@ -46,12 +47,20 @@ class Node:
         ret = type(self)()
         ret.wins = self.wins
         ret.plays = self.plays
+        ret.ucb = self.ucb
+        ret.ucbUpdated = self.ucbUpdated
         ret.parentMoveVal = self.parentMoveVal
         ret.state = self.state.copy()
         ret.children = self.children
         ret.parent = self.parent
         ret.parentIsAI = self.parentIsAI
         return ret
+
+    def calcUCB(self, c=2**0.5):
+        if not self.ucbUpdated:
+            self.ucb = self.wins / self.plays + c * (np.log(self.parent.plays) / self.plays) ** 0.5
+            self.ucbUpdated = True
+        return self.ucb
 
     def isTerminal(self):
         return self.state.isTerminal()
@@ -145,14 +154,11 @@ class Game:
             outfile.close()
 
 class MCTS:
-    def __init__(self, game, nodeClass, trialsPerMove=10000):
+    def __init__(self, game, nodeClass, trialsPerMove=1000):
         self.trials = trialsPerMove
         self.game = game
         self.nodeClass = nodeClass
         self.root = nodeClass()
-
-    def ucb(self, wins, numSim, numSimParent, c=2**0.5):
-        return wins / numSim + c * (np.log(numSimParent) / numSim) ** 0.5
 
     def select(self):
         bestNode = self.root
@@ -160,7 +166,7 @@ class MCTS:
             bestChild = None
             bestUCB = 0
             for child in bestNode.children:
-                ucbVal = self.ucb(child.wins, child.plays, bestNode.plays)
+                ucbVal = child.calcUCB()
                 if ucbVal > bestUCB or bestChild is None:
                     bestChild = child
                     bestUCB = ucbVal
@@ -193,6 +199,7 @@ class MCTS:
             outcome = self.game.calcReward(node, won)
             node.wins += outcome
             node.plays += 1
+            node.ucbUpdated = False
             node = node.parent
 
     def play(self, state, playerMove=None):
