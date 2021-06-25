@@ -10,8 +10,9 @@ def logg(*args):
     print(*args)
 
 class State:
-    def __init__(self, state=None):
+    def __init__(self, state=None, parentIsAI=False):
         self.state = state
+        self.parentIsAI = parentIsAI
 
     def update(self, move):
         pass
@@ -82,7 +83,7 @@ class Game:
         pass
 
     def calcReward(node, outcome): # function favoring AI - if AI wins return some positive number
-        pass
+        return self.state.isTerminal()
 
     def printState(self):
         print(self.state.state)
